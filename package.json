@@ -1,0 +1,49 @@
+{
+  "name": "",
+  "version": "0.0.1",
+  "description": "",
+  "main": "index.js",
+  "dependencies": {
+  },
+  "devDependencies": {
+  },
+  "buildDependencies": [
+    "babel-cli",
+    "babel-plugin-add-module-exports",
+    "babel-plugin-lodash",
+    "babel-plugin-transform-runtime",
+    "babel-preset-env",
+    "rimraf"
+  ],
+  "engines": {
+    "node": ">=6.0.0"
+  },
+  "scripts": {
+  },
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
+  "keywords": [
+    "sql",
+    "query",
+    "querybuilder",
+    "query builder",
+    "qb",
+    "postgresql",
+    "mysql",
+    "mariadb",
+    "sqlite3",
+    "oracle",
+    "mssql"
+  ],
+  "author": {
+    "name": "bi wenqing",
+    "web": "https://github.com/merfais"
+  },
+  "bugs": {
+    "url": "https://github.com/merfais/qb/issues"
+  },
+  "homepage": "https://github.com/merfais/qb#readme",
+  "license": "MIT"
+}

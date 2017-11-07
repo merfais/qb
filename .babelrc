@@ -1,0 +1,14 @@
+{
+  "presets": [
+    ["env", {
+      "targets": {
+        "node": true
+      }
+    }]
+  ],
+  "plugins": [
+    "lodash",
+    "transform-runtime",
+    "add-module-exports"
+  ]
+}

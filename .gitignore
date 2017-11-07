@@ -1,0 +1,8 @@
+*.sw?
+.idea
+.DS_Store
+node_modules
+npm-debug.log
+
+#VsCode workspace
+.vscode
