@@ -1,44 +1,34 @@
 {
-  "name": "",
+  "name": "mysql-query-builder",
   "version": "0.0.1",
   "description": "",
   "main": "index.js",
-  "dependencies": {
-  },
-  "devDependencies": {
-  },
-  "buildDependencies": [
-    "babel-cli",
-    "babel-plugin-add-module-exports",
-    "babel-plugin-lodash",
-    "babel-plugin-transform-runtime",
-    "babel-preset-env",
-    "rimraf"
-  ],
-  "engines": {
-    "node": ">=6.0.0"
-  },
   "scripts": {
+    "test": "jest"
   },
+  "dependencies": {},
+  "devDependencies": {
+    "jest": "^27.0.0-next.1",
+    "lodash": "^4.17.20",
+    "mysql": "^2.18.1"
+  },
+  "files": [
+    "index.js",
+    "src"
+  ],
   "repository": {
     "type": "git",
     "url": ""
   },
   "keywords": [
-    "sql",
-    "query",
+    "mysql query builder",
+    "mysql",
     "querybuilder",
     "query builder",
-    "qb",
-    "postgresql",
-    "mysql",
-    "mariadb",
-    "sqlite3",
-    "oracle",
-    "mssql"
+    "qb"
   ],
   "author": {
-    "name": "bi wenqing",
+    "name": "coffeebi",
     "web": "https://github.com/merfais"
   },
   "bugs": {
