@@ -13,7 +13,7 @@ function fromArray(fields, tableName) {
       return
     }
 
-    if (!/^[ \t\n]*$/.test(field) && _.isString(field)) {
+    if (_.isString(field) && !/^[ \t\n]*$/.test(field)) {
       if (tableName) {
         sql.push('??.??')
         values.push(tableName, field)
@@ -69,14 +69,17 @@ function fromObject(obj) {
     // fields = { a: 'renameA', b: 'renameB' }
     if (_.isObject(fields)) {
       _.forEach(fields, (rename, field) => {
-        if (rename) {
+        if (_.isString(rename) && !/^[ \t\n]*$/.test(rename)) {
           sql.push('??.?? as ??')
           values.push(tableName, field, rename)
+        } else {
+          sql.push('??.??')
+          values.push(tableName, field)
         }
       })
     }
     // { a: 'renameA' }
-    if (_.isString(fields)) {
+    if (_.isString(fields) && !/^[ \t\n]*$/.test(fields)) {
       sql.push('?? as ??')
       values.push(tableName, fields)
     }
