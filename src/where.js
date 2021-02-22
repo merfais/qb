@@ -138,8 +138,8 @@ function buildItem(value, key, tableName = '') {
     sql += '??.'
     values.push(tableName)
   }
-  sql += '?? = ?'
-  values.push(key, value)
+  sql += '?'
+  values.push({ [key]: value })
   return { sql, values }
 }
 

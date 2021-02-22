@@ -28,8 +28,17 @@ describe('join', () => {
     query = qb.clear().where({ a: undefined }).toQuery();
     expect(mysql.format(...query)).toBe(' where `a` = NULL')
 
-    query = qb.clear().where({ a: 'av', b: 'bv' }, 't').toQuery()
-    expect(mysql.format(...query)).toBe(" where `t`.`a` = 'av' and `t`.`b` = 'bv'")
+    query = qb.clear().where({
+      a: 'av',
+      c: 1,
+      d: true,
+      f: null,
+      true: 1,
+      1: 1,
+    }, 't').toQuery()
+    const sql = " where `t`.`1` = 1 and `t`.`a` = 'av' and `t`.`c` = 1"
+      + " and `t`.`d` = true and `t`.`f` = NULL and `t`.`true` = 1"
+    expect(mysql.format(...query)).toBe(sql)
   })
 
   it('where({ [key: string]: <string|boolean|number>[] }, tableName: string)', () => {
