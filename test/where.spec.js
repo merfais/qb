@@ -139,4 +139,40 @@ describe('join', () => {
       + " and `t`.`c` not like '%c' and `t`.`c` not in ('ddd', 'fff')"
     expect(mysql.format(...query)).toBe(sql)
   })
+
+  it('where({ '
+    + '[anyKey: string]: <{'
+    + '  [key:string]: string|number|boolean|{[op:string]: string|number|boolean} '
+    + '}>[] '
+    + '}, tableName: string)', () => {
+    query = qb.clear().where({ or: [{ a: 1 }, { b: 2 }]}).toQuery()
+    expect(mysql.format(...query)).toBe(" where (`a` = 1 or `b` = 2)")
+  })
+
+  it('where()', () => {
+    query = qb.clear().where([
+      {a: {'>': 0, '<': 10 } },
+      {a: 5},
+      {
+        c: { '>': 1 },
+        or1: [
+          { a: { '<': 11, '>': 0 } },
+          { b: 20, c: 1 },
+        ],
+        or2: [
+          { b: { '>': 0 } },
+          { c: { '>': 0 } },
+        ],
+        d: 1,
+      },
+    ]).toQuery()
+    const sql = " where (`a` > 0 and `a` < 10)"
+      + " or `a` = 5"
+      + " or ("
+      + "`c` > 1 "
+      + "and ((`a` < 11 and `a` > 0) or (`b` = 20 and `c` = 1)) "
+      + "and (`b` > 0 or `c` > 0) "
+      + "and `d` = 1)"
+    expect(mysql.format(...query)).toBe(sql)
+  })
 })

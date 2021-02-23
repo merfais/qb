@@ -12,14 +12,15 @@ function fromArray(value, key, tableName = '') {
   // 单个key，多个value和操作符组合
   //     k: [{operator: '>', value: v1}, {>: v2}] ==> (k < v1 or k > v2)
   if (_.isObject(value[0])) {
-    sql += _.map(value, item => {
+    const values = []
+    const sql = _.map(value, item => {
       const obj = key === '()' ? item : { [key]: item }
       const sub = buildObject(obj, tableName)
-      values.push(...sub.value)
+      // values.push(...sub.value)
       return `(${sub.sql})`
     }).join(' or ')
 
-    return { sql: `(${sql})`, values: values }
+    return { sql: `(${sql})`, values }
   }
 
   // 单个key，多个value直连，使用in，k: [v1, v2, v3] ==> k in (v1, v2, v3)
@@ -33,6 +34,82 @@ function fromArray(value, key, tableName = '') {
   sql += '?? in (?)'
   values.push(key, value)
   return { sql, values }
+}
+
+/**
+ * 只有operator，value两个key的场景
+ * key: { operator: '', value: '' }
+ */
+function fromOperatorValue(obj, key, tableName = '') {
+  const { value, operator: op, suffix, prefix } = obj
+  let sql = ''
+  const values = []
+  if (tableName) {
+    sql += '??.'
+    values.push(tableName)
+  }
+  sql += `?? ${op} ?`
+  values.push(key)
+  // operator是'in', 'not in', 'is', 'is not', '!=',
+  //           '>', '<', '>=', '<=', '=', '<>', '<=>'
+  if (/^((not *)?in|is( *not)?|!=|>|<|>=|<=|=|<>|<=>)$/i.test(op)) {
+    if (_.isArray(value)) {
+      values.push([value])
+      return { sql, values }
+    }
+    if (_.isSimpleType(value) || value === null || value === undefined) {
+      values.push(value)
+      return { sql, values }
+    }
+  }
+  // operator是 'like' 'not like'
+  if (/^((not *)?like)$/i.test(op) && _.isSimpleType(value)) {
+    let str = `%${value}%`
+    if (prefix) {
+      str = `%${value}`
+    } else if (suffix) {
+      str = `${value}%`
+    }
+    values.push(str)
+    return { sql, values }
+  }
+  // 不支持的operator或者value无值，直接返回
+  return { sql: '', values: [] }
+}
+
+/**
+ * operator作为key, 支持多个operator的场景，用and连接
+ * key: { '>=': 1, '<=': 2 }  ===> k >= 1 and k <= 2
+ */
+function fromMultiOperatorKey(obj, key, tableName = '') {
+  let sqlArr = []
+  const values = []
+  _.forEach(obj, (val, op) => {
+    if (!/^(((not *)?(in|%?like%?))|is( *not)?|!=|>|<|>=|<=|=|<>|<=>)$/i.test(op)) {
+      return
+    }
+    let sql = ''
+    if (tableName) {
+      values.push(tableName)
+      sql += '??.'
+    }
+    values.push(key)
+    let value = val
+    if (/in/.test(op)) {
+      value = [val]
+    } else if(/like/.test(op)) {
+      const [, not, prefix, suffix] = op.match(/(not *)?(%?)like(%?)/)
+      op = not ? 'not like' : 'like'
+      if (prefix || suffix) {
+        value = `${prefix}${val}${suffix}`
+      } else {
+        value = `%${val}%`
+      }
+    }
+    values.push(value)
+    sqlArr.push(sql + `?? ${op} ?`)
+  })
+  return { sql: sqlArr.join(' and '), values }
 }
 
 function fromObject(value, key, tableName = '') {
@@ -50,70 +127,12 @@ function fromObject(value, key, tableName = '') {
 
   // 单个operator的场景，k: {operator: '', value: ''}
   if (_.has(value, 'operator') && _.has(value, 'value')) {
-    const { value: val, operator: op, suffix, prefix } = value
-    let sql = ''
-    const values = []
-    if (tableName) {
-      sql += '??.'
-      values.push(tableName)
-    }
-    sql += `?? ${op} ?`
-    values.push(key)
-    // operator是'in', 'not in', 'is', 'is not', '!=', '>', '<', '>=', '<=', '=', '<>', '<=>'
-    if (/^((not *)?in|is( *not)?|!=|>|<|>=|<=|=|<>|<=>)$/i.test(op)) {
-      if (_.isArray(val)) {
-        values.push([val])
-        return { sql, values }
-      }
-      if (_.isSimpleType(val) || val === null || val === undefined) {
-        values.push(val)
-        return { sql, values }
-      }
-    }
-    // operator是 'like' 'not like'
-    if (/^((not *)?like)$/i.test(op) && _.isSimpleType(val)) {
-      let str = `%${val}%`
-      if (prefix) {
-        str = `%${val}`
-      } else if (suffix) {
-        str = `${val}%`
-      }
-      values.push(str)
-      return { sql, values }
-    }
-    // 不支持的operator或者value无值，直接返回
-    return { sql: '', values: [] }
+    return fromOperatorValue(value, key, tableName)
   }
 
   // 1个key对应多个operator, 用and连接
   // k: {'>=': 1, '<=': 2}  ===> k >=1 and k <= 2
-  let sqlArr = []
-  const values = []
-  _.forEach(value, (val, op) => {
-    if (!/^(((not *)?(in|%?like%?))|is( *not)?|!=|>|<|>=|<=|=|<>|<=>)$/i.test(op)) {
-      return
-    }
-    let sql = ''
-    if (tableName) {
-      values.push(tableName)
-      sql += '??.'
-    }
-    values.push(key)
-    if (/in/.test(op)) {
-      val = [val]
-    } else if(/like/.test(op)) {
-      const [, not, prefix, suffix] = op.match(/(not *)?(%?)like(%?)/)
-      op = not ? 'not like' : 'like'
-      if (prefix || suffix) {
-        val = `${prefix}${val}${suffix}`
-      } else {
-        val = `%${val}%`
-      }
-    }
-    values.push(val)
-    sqlArr.push(sql + `?? ${op} ?`)
-  })
-  return { sql: sqlArr.join(' and '), values }
+  return fromMultiOperatorKey(value, key, tableName)
 }
 
 function buildItem(value, key, tableName = '') {
@@ -121,12 +140,12 @@ function buildItem(value, key, tableName = '') {
   if (_.isString(value) && /^[ \t\n]*$/.test(value)) {
     return { sql: '', values: [] }
   }
-  // 使用or连接多个value场景
+  // 数组使用in 或者 使用or连接多个value场景
   if (_.isArray(value)) {
     return fromArray(value, key, tableName)
   }
 
-  // object 复杂表达式
+  // object 使用and链接
   if (_.isObject(value)) {
     return fromObject(value, key, tableName)
   }
@@ -194,7 +213,7 @@ function buildObject(obj, tableName = '') { // {k:v,k:v,k:v} 使用 and 连接
   const sqlArr = []
   _.forEach(obj, (value, key) => {
     const rst = buildItem(value, key, tableName)
-    if (rst.values && rst.values.length && rst.sql) {
+    if (rst.values.length && rst.sql) {
       values.push(...rst.values)
       sqlArr.push(rst.sql)
     }
