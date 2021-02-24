@@ -4,6 +4,7 @@ const Builder = require('..')
 describe('join', () => {
   let qb
   let query
+  let sql
 
   beforeEach(() => {
     qb = new Builder()
@@ -36,7 +37,7 @@ describe('join', () => {
       true: 1,
       1: 1,
     }, 't').toQuery()
-    const sql = " where `t`.`1` = 1 and `t`.`a` = 'av' and `t`.`c` = 1"
+    sql = " where `t`.`1` = 1 and `t`.`a` = 'av' and `t`.`c` = 1"
       + " and `t`.`d` = true and `t`.`f` = NULL and `t`.`true` = 1"
     expect(mysql.format(...query)).toBe(sql)
   })
@@ -53,7 +54,7 @@ describe('join', () => {
       b: ['a', 'b', 1, true],
       c: [],
     }, 't').toQuery()
-    const sql = " where `t`.`a` in ('a', 'b', 1, true)"
+    sql = " where `t`.`a` in ('a', 'b', 1, true)"
       + " and `t`.`b` in ('a', 'b', 1, true)"
     expect(mysql.format(...query)).toBe(sql)
   })
@@ -75,9 +76,9 @@ describe('join', () => {
       d: { operator: 'is not', value: true },
       e: { operator: 'is not', value: 'true' },
     }).toQuery()
-    const sql0 = " where `a` is 1 and `b` is NULL and `c` is not NULL"
+    sql = " where `a` is 1 and `b` is NULL and `c` is not NULL"
       + " and `d` is not true and `e` is not 'true'"
-    expect(mysql.format(...query)).toBe(sql0)
+    expect(mysql.format(...query)).toBe(sql)
 
     query = qb.clear().where({
       a: { operator: '=', value: 'a' },
@@ -89,10 +90,10 @@ describe('join', () => {
       g: { operator: '<=', value: -1 },
       h: { operator: '<=>', value: undefined },
     }).toQuery()
-    const sql1 = " where `a` = 'a' and `b` > 1 and `c` < 0"
+    sql = " where `a` = 'a' and `b` > 1 and `c` < 0"
       + " and `d` != true and `e` <> 'true' and `f` >= 'null'"
       + " and `g` <= -1 and `h` <=> NULL"
-    expect(mysql.format(...query)).toBe(sql1)
+    expect(mysql.format(...query)).toBe(sql)
 
     query = qb.clear().where({ a: { operator: 'not like', value: 'b' } }).toQuery()
     expect(mysql.format(...query)).toBe(" where `a` not like '%b%'")
@@ -109,7 +110,7 @@ describe('join', () => {
       c: { operator: 'like', value: 'str' },
       d: { operator: 'is not', value: null },
     }, 't').toQuery()
-    const sql = " where `t`.`a` <= 10 and `t`.`b` > 1 and `t`.`c` like '%str%' and `t`.`d` is not NULL"
+    sql = " where `t`.`a` <= 10 and `t`.`b` > 1 and `t`.`c` like '%str%' and `t`.`d` is not NULL"
     expect(mysql.format(...query)).toBe(sql)
   })
 
@@ -134,45 +135,168 @@ describe('join', () => {
       b: { like: 'b', 'is not': 'bbb' },
       c: { 'not %like': 'c', 'not in': ['ddd', 'fff'] },
     }, 't').toQuery()
-    const sql = " where `t`.`a` like 'a%' and `t`.`a` is NULL"
+    sql = " where `t`.`a` like 'a%' and `t`.`a` is NULL"
       + " and `t`.`b` like '%b%' and `t`.`b` is not 'bbb'"
       + " and `t`.`c` not like '%c' and `t`.`c` not in ('ddd', 'fff')"
     expect(mysql.format(...query)).toBe(sql)
   })
 
-  it('where({ '
-    + '[anyKey: string]: <{'
-    + '  [key:string]: string|number|boolean|{[op:string]: string|number|boolean} '
-    + '}>[] '
-    + '}, tableName: string)', () => {
-    query = qb.clear().where({ or: [{ a: 1 }, { b: 2 }]}).toQuery()
-    expect(mysql.format(...query)).toBe(" where (`a` = 1 or `b` = 2)")
+  const des = 'where({[anyKey: string]: '
+    + '<{[key:string]: string|number|boolean|{[op:string]: string|number|boolean}}>[]'
+    + '}, tableName: string)'
+  it(des, () => {
+    query = qb.clear().where({ or: [{ a: 1 }, { b: 2 }], c: 3 }).toQuery()
+    expect(mysql.format(...query)).toBe(" where (`a` = 1 or `b` = 2) and `c` = 3")
+
+    query = qb.clear().where({ a: { is: null }, or: [{ b: 2 }] }).toQuery()
+    expect(mysql.format(...query)).toBe(" where `a` is NULL and `b` = 2")
+
+    query = qb.clear().where({
+      a: { is: undefined },
+      or1: [
+        { b: { '<': 2, '>': 0 } },
+        { b: [1,2] }
+      ],
+      or2: [
+        { c: 1 },
+        { d: { '<': 10 } },
+        { e: '3', f: true, or: [{ g: { is: null } }, { g: { like: 'gg' } }] },
+      ],
+      h: 'str',
+    }, 't').toQuery()
+    sql = " where `t`.`a` is NULL "
+      + "and ((`t`.`b` < 2 and `t`.`b` > 0) or `t`.`b` in (1, 2)) "
+      + "and (`t`.`c` = 1 or `t`.`d` < 10 or ("
+      + "`t`.`e` = '3' and `t`.`f` = true and (`t`.`g` is NULL or `t`.`g` like '%gg%')"
+      + ")) "
+      + "and `t`.`h` = 'str'"
+    expect(mysql.format(...query)).toBe(sql)
+
+    // illegal input
+    query = qb.clear().where({
+      or: [{ b: 2 }, 1, null, false],
+      or2: [{ a: 1 }, { c: [] }, { d: {} }, {}, { e: null }],
+    }, 't').toQuery()
+    sql = " where `t`.`b` = 2 and (`t`.`a` = 1 or `t`.`e` = NULL)"
+    expect(mysql.format(...query)).toBe(sql)
   })
 
-  it('where()', () => {
+  it('where({ [tableName: string]: Object)', () => {
+    query = qb.clear().where({t: { a: { in: ['a', 'b'] } } }).toQuery()
+    expect(mysql.format(...query)).toBe(" where `t`.`a` in ('a', 'b')")
+
+    query = qb.clear().where({ t: { a: { '>': 1, '<': 10 } } }).toQuery()
+    expect(mysql.format(...query)).toBe(" where `t`.`a` > 1 and `t`.`a` < 10")
+
+    query = qb.clear().where({ t: { a: { '=': 1 }, b: { like: 'a' } } }).toQuery()
+    expect(mysql.format(...query)).toBe(" where `t`.`a` = 1 and `t`.`b` like '%a%'")
+
+    query = qb.clear().where({ t1: { a: { '=': 1 } }, t2: { b: { like: 'a' } } }).toQuery()
+    expect(mysql.format(...query)).toBe(" where `t1`.`a` = 1 and `t2`.`b` like '%a%'")
+
+    query = qb.clear().where({
+      t1: { a: { 'like%': 'a', is: null } },
+      t2: { b: { like: 'b', 'is not': 'bbb' } },
+      t3: { c: { 'not %like': 'c', 'not in': ['ddd', 'fff'] } },
+    }).toQuery()
+    sql = " where `t1`.`a` like 'a%' and `t1`.`a` is NULL"
+      + " and `t2`.`b` like '%b%' and `t2`.`b` is not 'bbb'"
+      + " and `t3`.`c` not like '%c' and `t3`.`c` not in ('ddd', 'fff')"
+    expect(mysql.format(...query)).toBe(sql)
+
+    query = qb.clear().where({
+      t1: { a: { is: undefined } },
+      or1: [
+        { t1: { b: { '<': 2, '>': 0 } } },
+        { t2: { b: [1,2] } },
+      ],
+      or2: [
+        { t3: { c: 1 } },
+        { t3: { d: { '<': 10 } } },
+        {
+          t3: { e: '3' },
+          t4: { f: true },
+          or: [
+            { t4: { g: { is: null } } },
+            { t4: { g: { like: 'gg' } } }
+          ]
+        },
+      ],
+      t5: { h: 'str' },
+    }, 't').toQuery()
+    sql = " where `t1`.`a` is NULL "
+      + "and ((`t1`.`b` < 2 and `t1`.`b` > 0) or `t2`.`b` in (1, 2)) "
+      + "and (`t3`.`c` = 1 or `t3`.`d` < 10 or ("
+      + "`t3`.`e` = '3' and `t4`.`f` = true and (`t4`.`g` is NULL or `t4`.`g` like '%gg%')"
+      + ")) "
+      + "and `t5`.`h` = 'str'"
+    expect(mysql.format(...query)).toBe(sql)
+  })
+
+  it('where(<object>[], tableName: string)', () => {
     query = qb.clear().where([
-      {a: {'>': 0, '<': 10 } },
-      {a: 5},
+      { a: { '>': 0, '<': 10 } },
+      { a: 15 },
       {
-        c: { '>': 1 },
+        c: { is: undefined },
         or1: [
-          { a: { '<': 11, '>': 0 } },
-          { b: 20, c: 1 },
+          { b: { '<': 2, '>': 0 } },
+          { b: [1,2] }
         ],
         or2: [
-          { b: { '>': 0 } },
-          { c: { '>': 0 } },
+          { d: 20 },
+          { d: { '<': 10 } },
+          { e: '3', f: true, or: [{ g: { is: null } }, { g: { like: 'gg' } }] },
         ],
-        d: 1,
+        h: 'str',
       },
     ]).toQuery()
-    const sql = " where (`a` > 0 and `a` < 10)"
-      + " or `a` = 5"
+    sql = " where (`a` > 0 and `a` < 10)"
+      + " or `a` = 15"
       + " or ("
-      + "`c` > 1 "
-      + "and ((`a` < 11 and `a` > 0) or (`b` = 20 and `c` = 1)) "
-      + "and (`b` > 0 or `c` > 0) "
-      + "and `d` = 1)"
+      + "`c` is NULL "
+      + "and ((`b` < 2 and `b` > 0) or `b` in (1, 2)) "
+      + "and (`d` = 20 or `d` < 10 or ("
+      + "`e` = '3' and `f` = true and (`g` is NULL or `g` like '%gg%')"
+      + ")) "
+      + "and `h` = 'str'"
+      + ")"
+    expect(mysql.format(...query)).toBe(sql)
+
+    query = qb.clear().where([
+      { t1: { a: { '>': 0, '<': 10 } } },
+      { t1: { a: 15 } },
+      {
+        t2: { c: { is: undefined } },
+        or1: [
+          { t3 : { b: { '<': 2, '>': 0 } } },
+          { t3: { b: [1,2] } },
+        ],
+        or2: [
+          { t4: { d: 20 } },
+          { t5: { d: { '<': 10 } } },
+          {
+            t6: { e: '3' },
+            t7: { f: true },
+            or: [
+              { t7: { g: { is: null } } },
+              { t8: { g: { like: 'gg' } } },
+            ]
+          },
+        ],
+        t9: { h: 'str' },
+      },
+    ]).toQuery()
+    sql = " where (`t1`.`a` > 0 and `t1`.`a` < 10)"
+      + " or `t1`.`a` = 15"
+      + " or ("
+      + "`t2`.`c` is NULL "
+      + "and ((`t3`.`b` < 2 and `t3`.`b` > 0) or `t3`.`b` in (1, 2)) "
+      + "and (`t4`.`d` = 20 or `t5`.`d` < 10 or ("
+      + "`t6`.`e` = '3' and `t7`.`f` = true and (`t7`.`g` is NULL or `t8`.`g` like '%gg%')"
+      + ")) "
+      + "and `t9`.`h` = 'str'"
+      + ")"
     expect(mysql.format(...query)).toBe(sql)
   })
 })
