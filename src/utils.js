@@ -167,100 +167,13 @@ function forEach(src, func) {
   }
 }
 
-// function findIndex(src, func) {
-//   let rst = -1
-//   forEach(src, (item, index, obj) => {
-//     if (isFunction(func)) {
-//       if (func(item, index, obj) === true) {
-//         rst = index
-//         return false
-//       }
-//     } else {
-//       if (isShallowEqual(item, func)) {
-//         rst = index
-//         return false
-//       }
-//     }
-//   })
-//   return rst
-// }
-//
-// const charCodeOfDot = '.'.charCodeAt(0)
-// const reEscapeChar = /\\(\\)?/g
-// const rePropName = RegExp(
-//   // Match anything that isn't a dot or bracket.
-//   '[^.[\\]]+' + '|' +
-//   // Or match property names within brackets.
-//   '\\[(?:' +
-//     // Match a non-string expression.
-//     '([^"\'].*)' + '|' +
-//     // Or match strings (supports escaping characters).
-//     '(["\'])((?:(?!\\2)[^\\\\]|\\\\.)*?)\\2' +
-//   ')\\]'+ '|' +
-//   // Or match "" as the space between consecutive dots or empty brackets.
-//   '(?=(?:\\.|\\[\\])(?:\\.|\\[\\]|$))'
-// , 'g')
-//
-// function stringToPath(string) {
-//   const result = []
-//   if (string.charCodeAt(0) === charCodeOfDot) {
-//     result.push('')
-//   }
-//   string.replace(rePropName, (match, expression, quote, subString) => {
-//     let key = match
-//     if (quote) {
-//       key = subString.replace(reEscapeChar, '$1')
-//     }
-//     else if (expression) {
-//       key = expression.trim()
-//     }
-//     result.push(key)
-//   })
-//   return result
-// }
-//
-// function toPath(value) {
-//   if (!isString(value)) {
-//     return []
-//   }
-//   return stringToPath(value)
-// }
-//
-// function get(object, path, defaultValue) {
-//   if (object == null) {
-//     return defaultValue
-//   }
-//   if (!Array.isArray(path)) {
-//     const reIsDeepProp = /\.|\[(?:[^[\]]*|(["'])(?:(?!\1)[^\\]|\\.)*?\1)\]/
-//     const reIsPlainProp = /^\w*$/
-//     const isKey = function(value, object) {
-//       const type = typeof value
-//       if (type == 'number' || type == 'boolean' || value == null) {
-//         return true
-//       }
-//       return reIsPlainProp.test(value)
-//         || !reIsDeepProp.test(value)
-//         || (object != null && value in Object(object))
-//     }
-//     if (isKey(path, object)) {
-//       path = [path]
-//     } else {
-//       path = stringToPath(path)
-//     }
-//   }
-//   let index = 0
-//   const length = path.length
-//   while (object != null && index < length) {
-//     object = object[path[index]]
-//     index += 1
-//   }
-//   if (index && index === length) {
-//     return object === undefined ? defaultValue : object
-//   } else {
-//     return defaultValue
-//   }
-// }
-
+function toPositiveInt(num) {
+  const int = Number.parseInt(num, 10)
+  if (Number.isNaN(int) || int < 1) {
+    return 0
+  }
+  return int
+}
 
 module.exports = {
   isObject,
@@ -275,4 +188,5 @@ module.exports = {
   map,
   reduce,
   forEach,
+  toPositiveInt,
 }

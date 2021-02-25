@@ -141,20 +141,36 @@ class SqlBuilder {
     return this
   }
 
-  limit(page, size) {
-    const sizeInt = Number.parseInt(size, 10)
-    if (Number.isNaN(sizeInt) || sizeInt < 1) {
+  limit(limit = 0) {
+    const size = _.toPositiveInt(limit)
+    if (!size) {
       return this
     }
     this.sql += ' limit ?'
-    this.values.push(sizeInt)
+    this.values.push(size)
+    return this
+  }
 
-    const pageInt = Number.parseInt(page, 10)
-    if (Number.isNaN(pageInt) || pageInt < 1) {
+  offset(offset = 0) {
+    const page = _.toPositiveInt(offset)
+    if (!page) {
       return this
     }
     this.sql += ' offset ?'
-    this.values.push((pageInt - 1) * sizeInt)
+    this.values.push(page)
+    return this
+  }
+
+  page(size, page = 1) {
+    const sizeInt = _.toPositiveInt(size)
+    if (!sizeInt) {
+      return this
+    }
+    this.limit(size)
+    const pageInt = _.toPositiveInt(page)
+    if (pageInt) {
+      return this.offset((pageInt - 1) * sizeInt)
+    }
     return this
   }
 
