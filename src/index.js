@@ -2,11 +2,7 @@ const _ = require('./utils')
 const select = require('./select')
 const join = require('./join')
 const where = require('./where')
-
-const ORDER = {
-  ASC: 'asc',
-  DESC: 'desc',
-}
+const order = require('./order')
 
 class SqlBuilder {
   sql = ''
@@ -65,7 +61,7 @@ class SqlBuilder {
       this.joinPrefix = ''
     }
     const { sql, values } = join(target, source, mapping, prefix)
-    if (sql.length) {
+    if (sql) {
       this.sql += sql
       this.values.push(...values)
     }
@@ -101,21 +97,27 @@ class SqlBuilder {
     if (!condition || _.isEmpty(condition)) {
       return this
     }
-    const rst = where(condition, tableName)
-    if (rst.sql && rst.values.length) {
+    if (!_.isObject(condition) && !_.isArray(condition)) {
+      return this
+    }
+    if (!/ where /.test(this.sql)) {
+      prefix = 'where'
+    }
+    const { sql, values } = where(condition, tableName)
+    if (sql) {
       this.sql += ` ${prefix}`
-      this.sql += ` ${rst.sql}`
-      this.values.push(...rst.values)
+      this.sql += ` ${sql}`
+      this.values.push(...values)
     }
     return this
   }
 
-  andWhere(...args) {
-    return this.where(...args, 'and')
+  andWhere(condition, tableName = '') {
+    return this.where(condition, tableName, 'and')
   }
 
-  orWhere(...args) {
-    return this.where(...args, 'or')
+  orWhere(condition, tableName = '') {
+    return this.where(condition, tableName, 'or')
   }
 
   /**
@@ -131,16 +133,10 @@ class SqlBuilder {
     if (!sort) {
       return this
     }
-    this.sql += ' order by'
-    if (typeof sort === 'string') {
-      const [field, order] = sort.split(/ +/)
-      this.sql += ` ?? ${ORDER[_.upperCase(order)] || ORDER.ASC}`
-      this.values.push(field)
-    } else {
-      this.sql += _.map(sort, (order, field) => {
-        return ` ?? ${ORDER[_.upperCase(order)] || ORDER.ASC}`
-        this.values.push(field)
-      }).join(', ')
+    const { sql, values } = order(sort)
+    if (sql) {
+      this.sql += ` order by ${sql}`
+      this.values.push(...values)
     }
     return this
   }

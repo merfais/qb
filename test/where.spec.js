@@ -1,7 +1,7 @@
 const mysql = require('mysql')
 const Builder = require('..')
 
-describe('join', () => {
+describe('where', () => {
   let qb
   let query
   let sql
@@ -10,10 +10,24 @@ describe('join', () => {
     qb = new Builder()
   })
 
-  it('where({ [key: string]: string|boolean|number }, tableName: string)', () => {
+  it('where(condition: string|number|boolean|null|undefined)', () => {
     query = qb.clear().where().toQuery()
     expect(mysql.format(...query)).toBe('')
 
+    query = qb.clear().where('').toQuery()
+    expect(mysql.format(...query)).toBe('')
+
+    query = qb.clear().where('1').toQuery()
+    expect(mysql.format(...query)).toBe('')
+
+    query = qb.clear().where(1).toQuery()
+    expect(mysql.format(...query)).toBe('')
+
+    query = qb.clear().where(true).toQuery()
+    expect(mysql.format(...query)).toBe('')
+  })
+
+  it('where({ [key: string]: string|boolean|number }, tableName: string)', () => {
     query = qb.clear().where({}).toQuery()
     expect(mysql.format(...query)).toBe('')
 
@@ -298,5 +312,19 @@ describe('join', () => {
       + "and `t9`.`h` = 'str'"
       + ")"
     expect(mysql.format(...query)).toBe(sql)
+  })
+
+  it('andWhere(), orWhere()', () => {
+    query = qb.clear().andWhere({ a: 'a' }).toQuery()
+    expect(mysql.format(...query)).toBe(" where `a` = 'a'")
+
+    query = qb.clear().where({ a: 1 }).andWhere({ b: 2 }).toQuery()
+    expect(mysql.format(...query)).toBe(" where `a` = 1 and `b` = 2")
+
+    query = qb.clear().orWhere({ a: 'a' }).toQuery()
+    expect(mysql.format(...query)).toBe(" where `a` = 'a'")
+
+    query = qb.clear().where({ a: 1 }).orWhere({ b: 2 }).toQuery()
+    expect(mysql.format(...query)).toBe(" where `a` = 1 or `b` = 2")
   })
 })
