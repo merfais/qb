@@ -17,27 +17,37 @@ module.exports = function insert(tableName, data) {
     return { sql, values }
   }
 
-  // 不是object，则是array
-  // 如果是数组且只有一个item，按object处理
-  if (data.length === 1 && _.isObject(data[0])) {
-    sql += 'set ?'
-    values.push(data[0])
-    return { sql, values }
-  }
-
-  // 提取所有的字段
+  // 提取所有的Object，字段
   const fieldMap = {}
+  const objData = []
   _.forEach(data, item => {
-    if (_.isObject(item)) {
+    if (_.isObject(item) && !_.isEmpty(item)) {
       Object.assign(fieldMap, item)
+      objData.push(item)
     }
   })
 
-  const fields = Object.keys(fieldMap).sort()
+  if (!objData.length) {
+    return { sql: '', values: [] }
+  }
+
+  // 如果是数组且只有一个item，按object处理
+  if (objData.length === 1) {
+    sql += 'set ?'
+    values.push(objData[0])
+    return { sql, values }
+  }
+
+  // 多个item，使用values插入多行
+  const fields = Object.keys(fieldMap)
+
   const fieldsHolder = _.map(fields, i => '??').join(', ')
   sql += `(${fieldsHolder}) values ?`
-  const values = _.map(data, obj => {
+
+  const valueArr = _.map(data, obj => {
     return _.map(fields, field => obj[field])
   })
-  values.push(...fields, values)
+  values.push(...fields, valueArr)
+  return { sql, values }
 }
+

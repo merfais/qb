@@ -17,6 +17,9 @@ describe('where', () => {
     query = qb.clear().where('').toQuery()
     expect(mysql.format(...query)).toBe('')
 
+    query = qb.clear().where('  ').toQuery()
+    expect(mysql.format(...query)).toBe('')
+
     query = qb.clear().where('1').toQuery()
     expect(mysql.format(...query)).toBe('')
 
@@ -37,11 +40,11 @@ describe('where', () => {
     query = qb.clear().where({ a: 1, b: 'b', c: true }).toQuery();
     expect(mysql.format(...query)).toBe(" where `a` = 1 and `b` = 'b' and `c` = true")
 
-    query = qb.clear().where({ a: null }).toQuery();
-    expect(mysql.format(...query)).toBe(' where `a` = NULL')
+    query = qb.clear().where({ a: null, b: undefined }).toQuery();
+    expect(mysql.format(...query)).toBe(' where `a` = NULL and `b` = NULL')
 
-    query = qb.clear().where({ a: undefined }).toQuery();
-    expect(mysql.format(...query)).toBe(' where `a` = NULL')
+    query = qb.clear().where({ a: '   ', b: false }).toQuery();
+    expect(mysql.format(...query)).toBe(' where `b` = false')
 
     query = qb.clear().where({
       a: 'av',
@@ -89,6 +92,7 @@ describe('where', () => {
       c: { operator: 'is not', value: undefined },
       d: { operator: 'is not', value: true },
       e: { operator: 'is not', value: 'true' },
+      f: { operator: 'illegal', value: '' },
     }).toQuery()
     sql = " where `a` is 1 and `b` is NULL and `c` is not NULL"
       + " and `d` is not true and `e` is not 'true'"
@@ -312,6 +316,14 @@ describe('where', () => {
       + "and `t9`.`h` = 'str'"
       + ")"
     expect(mysql.format(...query)).toBe(sql)
+  })
+
+  it('where(fn: (queryBuilder) => { sql: string, values: Array } | queryBuilder | void)', () => {
+    query = qb.clear().where((builder) => {
+      const { sql, values } = builder.select('f1').from('t')
+      return { sql: `?? in (${sql})`, values: ['a', ...values] }
+    }).toQuery()
+    expect(mysql.format(...query)).toBe(" where `a` in (select `f1` from `t`)")
   })
 
   it('andWhere(), orWhere()', () => {

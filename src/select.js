@@ -13,25 +13,25 @@ function fromArray(fields, tableName) {
       return
     }
 
-    if (_.isString(field) && !/^[ \t\n]*$/.test(field)) {
+    if (_.isString(field) && field.trim()) {
       if (tableName) {
         sql.push('??.??')
-        values.push(tableName, field)
+        values.push(tableName, field.trim())
       } else {
         sql.push('??')
-        values.push(field)
+        values.push(field.trim())
       }
       return
     }
 
     if (_.isArray(field)
       && !/^[ \t\n]*$/.test(field[0]) && _.isSimpleType(field[0])
-      && !/^[ \t\n]*$/.test(field[1]) && _.isString(field[1])
+      && _.isString(field[1]) && field[1].trim()
     ) {
       if (_.isNumber(field[0]) || _.isBoolean(field[0])) {
         if (!tableName) {
           sql.push('? as ??')
-          values.push(field[0], field[1])
+          values.push(field[0], field[1].trim())
         }
         return
       }
@@ -41,7 +41,7 @@ function fromArray(fields, tableName) {
       } else {
         sql.push('?? as ??')
       }
-      values.push(field[0], field[1])
+      values.push(field[0], field[1].trim())
       return
     }
   })
@@ -69,9 +69,9 @@ function fromObject(obj) {
     // fields = { a: 'renameA', b: 'renameB' }
     if (_.isObject(fields)) {
       _.forEach(fields, (rename, field) => {
-        if (_.isString(rename) && !/^[ \t\n]*$/.test(rename)) {
+        if (_.isString(rename) && rename.trim()) {
           sql.push('??.?? as ??')
-          values.push(tableName, field, rename)
+          values.push(tableName, field, rename.trim())
         } else {
           sql.push('??.??')
           values.push(tableName, field)
@@ -79,9 +79,9 @@ function fromObject(obj) {
       })
     }
     // { a: 'renameA' }
-    if (_.isString(fields) && !/^[ \t\n]*$/.test(fields)) {
+    if (_.isString(fields) && fields.trim()) {
       sql.push('?? as ??')
-      values.push(tableName, fields)
+      values.push(tableName, fields.trim())
     }
   })
 
@@ -94,8 +94,8 @@ module.exports = function select(fields) {
   }
 
   // fields = 'a'
-  if (_.isString(fields) && !/^[ \t\n]*$/.test(fields)) {
-    return { sql: ['??'], values: [fields] }
+  if (_.isString(fields) && fields.trim()) {
+    return { sql: ['??'], values: [fields.trim()] }
   }
 
   if (_.isEmpty(fields)) {

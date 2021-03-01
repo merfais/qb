@@ -3,6 +3,9 @@ const select = require('./select')
 const join = require('./join')
 const where = require('./where')
 const order = require('./order')
+const group = require('./group')
+const insert = require('./insert')
+const aggregateFn = require('./aggregateFn')
 
 class SqlBuilder {
   sql = ''
@@ -11,6 +14,15 @@ class SqlBuilder {
   select(fields) {
     if (this.sql) {
       this.sql += ';'
+    }
+
+    if (_.isFunction(fields)) {
+      const { sql, values } = this.exec(fields)
+      if (sql) {
+        this.sql += `select ${sql}`
+        this.values = this.values.concat(values)
+      }
+      return this
     }
 
     const { sql, values } = select(fields)
@@ -37,18 +49,14 @@ class SqlBuilder {
     return this
   }
 
-  selectCount(as = 'count', tableName, where) {
-    if (this.sql) {
-      this.sql += ';'
-    }
-    this.sql += 'select count(*) as ??'
-    this.values.push(as)
-    this.from(tableName)
-    this.where(where)
-    return this
-  }
-
   join(target, mapping, source, prefix = '') {
+    if (_.isFunction(target)) {
+      const { sql, values } = this.exec(target)
+      this.sql += sql
+      this.values = this.values.concat(values)
+      return this
+    }
+
     if (_.isObject(target)) {
       prefix = mapping
       mapping = target.mapping
@@ -97,13 +105,16 @@ class SqlBuilder {
     if (!condition || _.isEmpty(condition)) {
       return this
     }
-    if (!_.isObject(condition) && !_.isArray(condition)) {
+    if (!_.isObject(condition) && !_.isArray(condition) && !_.isFunction(condition)) {
       return this
     }
     if (!/ where /.test(this.sql)) {
       prefix = 'where'
     }
-    const { sql, values } = where(condition, tableName)
+    const { sql, values } = _.isFunction(condition)
+      ? this.exec(condition)
+      : where(condition, tableName)
+
     if (sql) {
       this.sql += ` ${prefix}`
       this.sql += ` ${sql}`
@@ -120,19 +131,7 @@ class SqlBuilder {
     return this.where(condition, tableName, 'or')
   }
 
-  /**
-   * 拼接order by
-   * @param {String|}
-   *
-   * @example
-   * // sort = 'a'         => ' order by a asc'
-   * // sort = 'a desc'  => ' order by a desc'
-   * // sort = { a: 'desc', b: 'asc' } => ' order by a desc, b asc'
-   */
   order(sort) {
-    if (!sort) {
-      return this
-    }
     const { sql, values } = order(sort)
     if (sql) {
       this.sql += ` order by ${sql}`
@@ -174,50 +173,67 @@ class SqlBuilder {
     return this
   }
 
-  withTotal(tableName, where) {
-    if (!this.sql || !tableName) {
-      return this
+  group(fields, tableName) {
+    const { sql, values } = group(fields, tableName)
+    if (sql) {
+      this.sql += sql
+      this.values.push(...values)
     }
-    this.sql += ' select count(*) as `total` from ??'
-    this.values.push(tableName)
-    this.where(where)
     return this
   }
 
+  fn(fn, field, as) {
+    const { sql, values } = aggregateFn(fn, field, as)
+    if (sql) {
+      this.sql += sql
+      this.values.push(...values)
+    }
+    return this
+  }
+
+  count(as) {
+    return this.fn('count', '*', as)
+  }
+
+  avg(field, as) {
+    return this.fn('avg', field, as)
+  }
+
+  max(field, as) {
+    return this.fn('max', field, as)
+  }
+
+  min(field, as) {
+    return this.fn('min', field, as)
+  }
+
+  sum(field, as) {
+    return this.fn('sum', field, as)
+  }
+
   insert(tableName, data) {
-    if (!tableName || _.isEmpty(data)) {
+    const { sql, values } = _.isFunction(tableName)
+      ? this.exec(tableName)
+      : insert(tableName, data)
+
+    if (!sql) {
       return this
     }
+
     if (this.sql) {
       this.sql += ';'
     }
-    this.sql += 'insert into ?? '
-    this.values.push(tableName)
-    if (_.isObject(data)) {
-      this.sql += 'set ?'
-      this.values.push(data)
-      return this
-    }
-    if ((_.isArray(data) && data.length === 1)) {
-      this.sql += 'set ?'
-      this.values.push(data[0])
-      return this
-    }
-    const fields = Object.keys(_.reduce(data, (acc, obj) => {
-      Object.assign(acc, obj)
-      return acc
-    }, {})).sort()
-    const fieldsHolder = _.fill(Array(fields.length), '??').join(', ')
-    this.sql += `(${fieldsHolder}) values ?`
-    const values = _.map(data, obj => {
-      return _.map(fields, field => obj[field])
-    })
-    this.values.push(...fields, values)
+    this.sql += sql
+    this.values = this.values.concat(values)
     return this
   }
 
   update(tableName, data, where) {
-    if (!tableName || _.isEmpty(data)) {
+    if (!_.isString(tableName)
+      || !tableName
+      || !_.isObject(data)
+      || _.isEmpty(data)
+    ) {
       return this
     }
     if (this.sql) {
@@ -230,7 +246,7 @@ class SqlBuilder {
   }
 
   delete(tableName, where) {
-    if (!tableName || _.isEmpty(where)) {
+    if (!_.isString(tableName) || !tableName) {
       return this
     }
     if (this.sql) {
@@ -240,6 +256,18 @@ class SqlBuilder {
     this.values.push(tableName)
     this.where(where)
     return this
+  }
+
+  exec(fn) {
+    const builder = new SqlBuilder()
+    let result = fn.call(builder, builder);
+    if (!result) {
+      result = builder
+    }
+    if (_.isString(result.sql) && result.sql && _.isArray(result.values)) {
+      return result
+    }
+    return { sql: '', values: []}
   }
 
   toQuery() {
@@ -252,21 +280,7 @@ class SqlBuilder {
     this.fromTable= ''
     return this
   }
-
-  build() {
-    let sql = ''
-    let values = []
-    if (this.select) {
-      sql += 'select'
-      values = values.concat(this.select.values)
-    } else if (this.insert) {
-      sql += 'insert'
-    } else if (this.update) {
-      sql += 'update'
-    } else if (this.delete) {
-      sql += 'delete'
-    }
-  }
 }
 
 module.exports = SqlBuilder
+
