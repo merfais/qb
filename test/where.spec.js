@@ -5,6 +5,7 @@ describe('where', () => {
   let qb
   let query
   let sql
+  let des
 
   beforeEach(() => {
     qb = new Builder()
@@ -76,6 +77,36 @@ describe('where', () => {
     expect(mysql.format(...query)).toBe(sql)
   })
 
+  it('where({ [key: string]: (qb) => {sql: string, values: Array}|qb|void }, tableName: string)', () => {
+    query = qb.clear().where({ a: () => {} }).toQuery()
+    expect(mysql.format(...query)).toBe('')
+
+    query = qb.clear().where({
+      a: () => ({
+        sql: 'select ?? from ?? where ?? = ?',
+        values: ['f1', 't', 'f2', 1],
+      })
+    }).toQuery()
+    sql = ' where `a` = (select `f1` from `t` where `f2` = 1)'
+    expect(mysql.format(...query)).toBe(sql)
+
+    query = qb.clear().where({
+      a: (builder) => {
+        builder.select('f1').from('t').where({ f2: 1})
+      }
+    }).toQuery()
+    sql = ' where `a` = (select `f1` from `t` where `f2` = 1)'
+    expect(mysql.format(...query)).toBe(sql)
+
+    query = qb.clear().where({
+      a() {
+        this.select('f1').from('t').where({ f2: 1})
+      }
+    }).toQuery()
+    sql = ' where `a` = (select `f1` from `t` where `f2` = 1)'
+    expect(mysql.format(...query)).toBe(sql)
+  })
+
   it('where({ [key: string]: { operator: string, value: string } }, tableName: string)', () => {
     query = qb.clear().where({ a: {} }).toQuery()
     expect(mysql.format(...query)).toBe('')
@@ -130,6 +161,62 @@ describe('where', () => {
     }, 't').toQuery()
     sql = " where `t`.`a` <= 10 and `t`.`b` > 1 and `t`.`c` like '%str%' and `t`.`d` is not NULL"
     expect(mysql.format(...query)).toBe(sql)
+
+    // illegal input
+    query = qb.clear().where({
+      a: { operator: '=', value: {} },
+      b: { operator: '>', value: [] },
+      c: { operator: '', value: 0 },
+    }).toQuery()
+    expect(mysql.format(...query)).toBe('')
+  })
+
+  des = 'where({ [key: string]: { '
+    + 'operator: string, '
+    + 'value: (qb) => {sql: string, values: Array}|qb|void'
+    + ' } }, tableName: string)'
+  it(des, () => {
+    query = qb.clear().where({
+      a: {
+        operator: 'in',
+        value: () => {}
+      }
+    }).toQuery()
+    expect(mysql.format(...query)).toBe('')
+
+    query = qb.clear().where({
+      a: {
+        operator: 'in',
+        value: () => ({
+          sql: 'select ?? from ?? where ?? = ?',
+          values: ['f1', 't', 'f2', 1],
+        }),
+      }
+    }).toQuery()
+    sql = ' where `a` in (select `f1` from `t` where `f2` = 1)'
+    expect(mysql.format(...query)).toBe(sql)
+
+    query = qb.clear().where({
+      a: {
+        operator: 'in',
+        value: (builder) => {
+          builder.select('f1').from('t').where({ f2: 1})
+        }
+      }
+    }).toQuery()
+    sql = ' where `a` in (select `f1` from `t` where `f2` = 1)'
+    expect(mysql.format(...query)).toBe(sql)
+
+    query = qb.clear().where({
+      a: {
+        operator: 'in',
+        value() {
+          this.select('f1').from('t').where({ f2: 1})
+        }
+      }
+    }).toQuery()
+    sql = ' where `a` in (select `f1` from `t` where `f2` = 1)'
+    expect(mysql.format(...query)).toBe(sql)
   })
 
   it('where({ [key: string]: { [op:string]: string|number|boolean } }, tableName: string)', () => {
@@ -159,7 +246,48 @@ describe('where', () => {
     expect(mysql.format(...query)).toBe(sql)
   })
 
-  const des = 'where({[anyKey: string]: '
+  des = 'where({ [key: string]: { '
+    + '[op: string]: (qb) => {sql: string, values: Array}|qb|void'
+    + ' } }, tableName: string)'
+  it(des, () => {
+    query = qb.clear().where({
+      a: { in: () => {} }
+    }).toQuery()
+    expect(mysql.format(...query)).toBe('')
+
+    query = qb.clear().where({
+      a: {
+        in: () => ({
+          sql: 'select ?? from ?? where ?? = ?',
+          values: ['f1', 't', 'f2', 1],
+        }),
+      }
+    }).toQuery()
+    sql = ' where `a` in (select `f1` from `t` where `f2` = 1)'
+    expect(mysql.format(...query)).toBe(sql)
+
+    query = qb.clear().where({
+      a: {
+        in: (builder) => {
+          builder.select('f1').from('t').where({ f2: 1})
+        }
+      }
+    }).toQuery()
+    sql = ' where `a` in (select `f1` from `t` where `f2` = 1)'
+    expect(mysql.format(...query)).toBe(sql)
+
+    query = qb.clear().where({
+      a: {
+        in() {
+          this.select('f1').from('t').where({ f2: 1})
+        }
+      }
+    }).toQuery()
+    sql = ' where `a` in (select `f1` from `t` where `f2` = 1)'
+    expect(mysql.format(...query)).toBe(sql)
+  })
+
+  des = 'where({[anyKey: string]: '
     + '<{[key:string]: string|number|boolean|{[op:string]: string|number|boolean}}>[]'
     + '}, tableName: string)'
   it(des, () => {
@@ -316,14 +444,6 @@ describe('where', () => {
       + "and `t9`.`h` = 'str'"
       + ")"
     expect(mysql.format(...query)).toBe(sql)
-  })
-
-  it('where(fn: (queryBuilder) => { sql: string, values: Array } | queryBuilder | void)', () => {
-    query = qb.clear().where((builder) => {
-      const { sql, values } = builder.select('f1').from('t')
-      return { sql: `?? in (${sql})`, values: ['a', ...values] }
-    }).toQuery()
-    expect(mysql.format(...query)).toBe(" where `a` in (select `f1` from `t`)")
   })
 
   it('andWhere(), orWhere()', () => {

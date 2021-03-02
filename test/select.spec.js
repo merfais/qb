@@ -46,6 +46,23 @@ describe('select', () => {
     expect(mysql.format(...query)).toBe('select true')
   })
 
+  it('select(fields: (qb) => {sql: string, values: Array}|qb|void)', () => {
+    query = qb.clear().select(() => ({})).toQuery();
+    expect(mysql.format(...query)).toBe('select *')
+
+    query = qb.clear().select(() => ({
+      sql: 'count(*) as ??',
+      values: ['count']
+    })).toQuery();
+    expect(mysql.format(...query)).toBe('select count(*) as `count`')
+
+    query = qb.clear().select((builder) => builder.count('count')).toQuery();
+    expect(mysql.format(...query)).toBe('select count(*) as `count`')
+
+    query = qb.clear().select(function () { this.count('count') }).toQuery();
+    expect(mysql.format(...query)).toBe('select count(*) as `count`')
+  })
+
   it('select(fields: <string|boolean|number|<string|boolean|number>[]>[])', () => {
     query = qb.clear().select(['a', 'b']).toQuery();
     expect(mysql.format(...query)).toBe('select `a`, `b`')
@@ -78,6 +95,27 @@ describe('select', () => {
     expect(mysql.format(...query)).toBe('select *')
   })
 
+  it('select(fields: <(qb) => {sql: string, values: Array}|qb|void>[])', () => {
+    query = qb.clear().select(['a', () => ({})]).toQuery();
+    expect(mysql.format(...query)).toBe('select `a`')
+
+    query = qb.clear().select(['a', () => ({
+      sql: 'max(??)',
+      values: ['b']
+    })]).toQuery();
+    expect(mysql.format(...query)).toBe('select `a`, max(`b`)')
+
+    query = qb.clear().select(['a', (builder) => {
+      builder.max('b', 'maxb')
+    }]).toQuery();
+    expect(mysql.format(...query)).toBe('select `a`, max(`b`) as `maxb`')
+
+    query = qb.clear().select(['a', function (builder, tableName) {
+      this.max([tableName, 'b'], 'maxb')
+    }], 't').toQuery();
+    expect(mysql.format(...query)).toBe('select `t`.`a`, max(`t`.`b`) as `maxb`')
+  })
+
   it('select(fields: { [key:string]: string })', () => {
     query = qb.clear().select({ a: '' }).toQuery();
     expect(mysql.format(...query)).toBe('select `a`.*')
@@ -95,6 +133,34 @@ describe('select', () => {
 
     query = qb.clear().select({ a: 'b', c: 1 }).toQuery()
     expect(mysql.format(...query)).toBe('select `a` as `b`')
+  })
+
+  it('select(fields: { [key]: string : (qb) => {sql: string, values: Array}|qb|void)', () => {
+    query = qb.clear().select({ a: () => ({}) }).toQuery();
+    expect(mysql.format(...query)).toBe('select *')
+
+    query = qb.clear().select({
+      a: 'ra',
+      b: () => ({
+        sql: 'max(??)',
+        values: ['b']
+      }),
+    }).toQuery();
+    expect(mysql.format(...query)).toBe('select `a` as `ra`, max(`b`)')
+
+    query = qb.clear().select({
+      a: 'ra',
+      b: (builder) => { builder.max('b', 'maxb') }
+    }).toQuery();
+    expect(mysql.format(...query)).toBe('select `a` as `ra`, max(`b`) as `maxb`')
+
+    query = qb.clear().select({
+      a: 'ra',
+      f: function (builder) {
+        this.max('b', 'maxb')
+      }
+    }).toQuery();
+    expect(mysql.format(...query)).toBe('select `a` as `ra`, max(`b`) as `maxb`')
   })
 
   it('select(fields: { [tableName:string]: { [field:string]: string } })', () => {
@@ -137,29 +203,45 @@ describe('select', () => {
     expect(mysql.format(...query)).toBe('select `t1`.`b`')
   })
 
-  it('select(fields: (queryBuilder) => { sql: string, values: Array } | queryBuilder | void)', () => {
-    query = qb.clear().select((q) => { q.count() }).toQuery();
-    expect(mysql.format(...query)).toBe('select count(*)')
+  des = 'select(fields: { [tableName:string]: { '
+    + '[field:string]: (qb) => {sql: string, values: Array}|qb|void) |'
+    + '<(qb) => {sql: string, values: Array}|qb|void)>[]'
+    + '} })'
+  it(des, () => {
+    query = qb.clear().select({ t: { a: () => ({}) } }).toQuery();
+    expect(mysql.format(...query)).toBe('select *')
 
-    query = qb.clear().select(function () { this.max('f1') }).toQuery();
-    expect(mysql.format(...query)).toBe('select max(`f1`)')
-
-    query = qb.clear().select((builder) => {
-      builder.sum('f1', 'f1')
-      return builder
+    query = qb.clear().select({
+      t1: { a: 'ra'},
+      t2: (builder, tableName) => ({
+        sql: 'max(??.??)',
+        values: [tableName, 'b']
+      }),
     }).toQuery();
-    expect(mysql.format(...query)).toBe('select sum(`f1`) as `f1`')
+    expect(mysql.format(...query)).toBe('select `t1`.`a` as `ra`, max(`t2`.`b`)')
 
-    query = qb.clear().select((builder) => {
-      builder.count('count')
-      return { sql: builder.sql, values: builder.values }
+    query = qb.clear().select({
+      t1: { a: 't1a' },
+      t2: {
+        a: 't2a',
+        b: (builder, tableName) => {
+          builder.max([tableName, 'b'], 'maxb')
+        }
+      }
     }).toQuery();
-    expect(mysql.format(...query)).toBe('select count(*) as `count`')
+    sql = 'select `t1`.`a` as `t1a`, `t2`.`a` as `t2a`, max(`t2`.`b`) as `maxb`'
+    expect(mysql.format(...query)).toBe(sql)
 
-    query = qb.clear().select(() => ({
-      sql: '??, avg(??) as ??',
-      values: ['name', 'score', 'score']
-    })).toQuery();
-    expect(mysql.format(...query)).toBe('select `name`, avg(`score`) as `score`')
+    query = qb.clear().select({
+      t1: { a: 't1a' },
+      t2: [
+        ['a', 't2a'],
+        function (builder, tableName) {
+          this.max([tableName, 'b'], 'maxb')
+        }
+      ]
+    }).toQuery();
+    sql = 'select `t1`.`a` as `t1a`, `t2`.`a` as `t2a`, max(`t2`.`b`) as `maxb`'
+    expect(mysql.format(...query)).toBe(sql)
   })
 })

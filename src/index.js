@@ -6,26 +6,18 @@ const order = require('./order')
 const group = require('./group')
 const insert = require('./insert')
 const aggregateFn = require('./aggregateFn')
+const subFn = require('./subFn')
 
 class SqlBuilder {
   sql = ''
   values = []
 
-  select(fields) {
+  select(fields, tableName) {
     if (this.sql) {
       this.sql += ';'
     }
 
-    if (_.isFunction(fields)) {
-      const { sql, values } = this.exec(fields)
-      if (sql) {
-        this.sql += `select ${sql}`
-        this.values = this.values.concat(values)
-      }
-      return this
-    }
-
-    const { sql, values } = select(fields)
+    const { sql, values } = select(fields, tableName)
     if (sql.length) {
       this.sql += `select ${sql.join(', ')}`
       this.values.push(...values)
@@ -50,13 +42,6 @@ class SqlBuilder {
   }
 
   join(target, mapping, source, prefix = '') {
-    if (_.isFunction(target)) {
-      const { sql, values } = this.exec(target)
-      this.sql += sql
-      this.values = this.values.concat(values)
-      return this
-    }
-
     if (_.isObject(target)) {
       prefix = mapping
       mapping = target.mapping
@@ -111,9 +96,7 @@ class SqlBuilder {
     if (!/ where /.test(this.sql)) {
       prefix = 'where'
     }
-    const { sql, values } = _.isFunction(condition)
-      ? this.exec(condition)
-      : where(condition, tableName)
+    const { sql, values } = where(condition, tableName)
 
     if (sql) {
       this.sql += ` ${prefix}`
@@ -212,9 +195,7 @@ class SqlBuilder {
   }
 
   insert(tableName, data) {
-    const { sql, values } = _.isFunction(tableName)
-      ? this.exec(tableName)
-      : insert(tableName, data)
+    const { sql, values } = insert(tableName, data)
 
     if (!sql) {
       return this
@@ -258,16 +239,27 @@ class SqlBuilder {
     return this
   }
 
-  exec(fn) {
-    const builder = new SqlBuilder()
-    let result = fn.call(builder, builder);
-    if (!result) {
-      result = builder
+  padEnd(sql, values) {
+    // 如果sql是string则拼接到sql中，如果是array则拼接到values
+    if (_.isString(sql)) {
+      this.sql += sql
+    } else if (_.isArray(sql)) {
+      this.values = this.values.concat(sql)
+      return this
     }
-    if (_.isString(result.sql) && result.sql && _.isArray(result.values)) {
-      return result
+    if (_.isArray(values)) {
+      this.values = this.values.concat(values)
     }
-    return { sql: '', values: []}
+    return this
+  }
+
+  sub(fn) {
+    const { sql, values } = subFn(fn)
+    if (sql) {
+      this.sql += sql
+      this.values = this.values.concat(values)
+    }
+    return this
   }
 
   toQuery() {

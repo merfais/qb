@@ -101,6 +101,7 @@ function has(obj, keyName) {
 function map(src, func) {
   const rst = []
   let i = 0
+  // istanbul ignore else
   if (isArray(src)) {
     while (i < src.length) {
       rst.push(func(src[i], i, src))
@@ -119,9 +120,11 @@ function map(src, func) {
 
 function forEach(src, func) {
   let i = 0
+  // istanbul ignore else
   if (isArray(src)) {
     while(i < src.length) {
       const rst = func(src[i], i, src)
+      // istanbul ignore if
       if (rst === false) {
         break
       }
@@ -132,6 +135,7 @@ function forEach(src, func) {
     while(i < keys.length) {
       const key = keys[i]
       const rst = func(src[key], key, src)
+      // istanbul ignore if
       if (rst === false) {
         break
       }

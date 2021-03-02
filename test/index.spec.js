@@ -72,12 +72,12 @@ describe('index', () => {
       .from('t1')
       .where({ a: 'str' })
       .page(10, 2)
-      .select()
+      .select((builder) => { builder.count('count')})
       .from('t1')
       .where({ a: 'str' })
       .toQuery();
     sql = "select * from `t1` where `a` = 'str' limit 10 offset 10;"
-      + "select * from `t1` where `a` = 'str'"
+      + "select count(*) as `count` from `t1` where `a` = 'str'"
     expect(mysql.format(...query)).toBe(sql)
 
     query = qb

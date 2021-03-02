@@ -1,4 +1,5 @@
 const _ = require('./utils')
+const subFn = require('./subFn')
 
 /**
  * value是数组的场景，有两种情况
@@ -9,7 +10,7 @@ const _ = require('./utils')
  *    {a: 1, orb: [{b: 2}, {a: 2}], orc: [{c: 1, d: 1}, {c: 3}], d = 4}
  *    => a = 1 and (b = 2 or a = 2) and ((c = 1 and d = 1) or c = 3) and d = 4
  */
-function fromArray(value, key, tableName = '') {
+function fromArray(value, key, tableName) {
   // k: [] 空数据，直接返回
   if (_.isEmpty(value)) {
     return { sql: '', values: [] }
@@ -31,9 +32,9 @@ function fromArray(value, key, tableName = '') {
   if (isSimpleType) {
     let sql = ''
     const values = []
-    if (tableName) {
+    if (_.isString(tableName) && tableName.trim()) {
       sql += '??.'
-      values.push(tableName)
+      values.push(tableName.trim())
     }
 
     sql += '?? in (?)'
@@ -50,20 +51,34 @@ function fromArray(value, key, tableName = '') {
  * value是只有operator，value两个key的object
  * key: { operator: '', value: '' }
  */
-function fromOperatorValue(obj, key, tableName = '') {
+function fromOperatorValue(obj, key, tableName) {
   const { value, operator: op, suffix, prefix } = obj
   let sql = ''
   const values = []
-  if (tableName) {
+
+  // 拼接表名
+  if (_.isString(tableName) && tableName.trim()) {
     sql += '??.'
-    values.push(tableName)
+    values.push(tableName.trim())
   }
+
+  // value是函数，使用函数的返回值
+  if (_.isFunction(value)) {
+    const result = subFn(value)
+    if (result.sql) {
+      sql += `?? ${op} (${result.sql})`
+      values.push(key, ...result.values)
+      return { sql, values }
+    }
+    return { sql: '', values: [] }
+  }
+
   sql += `?? ${op} ?`
   values.push(key)
   // operator是'in', 'not in', 'is', 'is not', '!=',
   //           '>', '<', '>=', '<=', '=', '<>', '<=>'
   if (/^((not *)?in|is( *not)?|!=|>|<|>=|<=|=|<>|<=>)$/i.test(op)) {
-    if (_.isArray(value)) {
+    if (_.isArray(value) && value.length) {
       values.push([value])
       return { sql, values }
     }
@@ -92,30 +107,47 @@ function fromOperatorValue(obj, key, tableName = '') {
  * operator作为key, 支持多个operator的场景，用and连接
  * key: { '>=': 1, '<=': 2 }  ===> k >= 1 and k <= 2
  */
-function fromMultiOperatorKey(obj, key, tableName = '') {
+function fromMultiOperatorKey(obj, key, tableName) {
   let sqlArr = []
   const values = []
-  _.forEach(obj, (val, op) => {
-    let sql = ''
-    if (tableName) {
-      values.push(tableName)
-      sql += '??.'
-    }
-    values.push(key)
-    let value = val
-    if (/in/.test(op)) {
-      value = [val]
-    } else if(/like/.test(op)) {
+  _.forEach(obj, (value, operator) => {
+    let val = value
+    let op = operator
+    // like 操作符含特殊语法，需要特殊处理
+    // %like：左模糊匹配， like%：右模糊匹配
+    if(/like/.test(op)) {
       const [, not, prefix, suffix] = op.match(/(not *)?(%?)like(%?)/)
       op = not ? 'not like' : 'like'
       if (prefix || suffix) {
-        value = `${prefix}${val}${suffix}`
+        val = `${prefix}${val}${suffix}`
       } else {
-        value = `%${val}%`
+        val = `%${val}%`
       }
     }
-    values.push(value)
-    sqlArr.push(sql + `?? ${op} ?`)
+
+    let sql = ''
+    // 拼接表名
+    if (_.isString(tableName) && tableName.trim()) {
+      sql += '??.'
+      values.push(tableName.trim())
+    }
+
+    // value是函数，使用函数的返回值
+    if (_.isFunction(val)) {
+      const result = subFn(val)
+      if (result.sql) {
+        sqlArr.push(`${sql}?? ${op} (${result.sql})`)
+        values.push(key, ...result.values)
+      }
+      return
+    }
+
+    // in需要拼接左右括号，嵌套数组会自动添加
+    if (/in/.test(op)) {
+      val = [val]
+    }
+    values.push(key, val)
+    sqlArr.push(`${sql}?? ${op} ?`)
   })
   return { sql: sqlArr.join(' and '), values }
 }
@@ -130,7 +162,7 @@ function fromMultiOperatorKey(obj, key, tableName = '') {
  *   key是table的名字, value作为完整的where item组装
  *    { t: { a: { '>': 1 }, b: 1, c: [1,2] } } => t.a > 1 and t.b = 1 and c in [1,2]
  */
-function fromObject(value, key, tableName = '') {
+function fromObject(value, key, tableName) {
   // 单个operator的场景，k: {operator: '', value: ''}
   if (_.has(value, 'operator') && _.has(value, 'value')) {
     return fromOperatorValue(value, key, tableName)
@@ -157,7 +189,7 @@ function fromObject(value, key, tableName = '') {
   return buildObject(subObj, key)
 }
 
-function buildItem(value, key, tableName = '') {
+function buildItem(value, key, tableName) {
   // 无值直接返回
   if (_.isString(value) && /^[ \t\n]*$/.test(value)) {
     return { sql: '', values: [] }
@@ -175,10 +207,25 @@ function buildItem(value, key, tableName = '') {
   // value是简单类型，1个key对应1个value, k: v
   let sql = ''
   const values = []
-  if (tableName) {
+
+  // 拼接表名
+  if (_.isString(tableName) && tableName.trim()) {
     sql += '??.'
-    values.push(tableName)
+    values.push(tableName.trim())
   }
+
+  // value是函数，使用函数的返回值
+  if (_.isFunction(value)) {
+    const result = subFn(value)
+    if (result.sql) {
+      sql += `?? = (${result.sql})`
+      values.push(key, ...result.values)
+      return { sql, values }
+    }
+    return { sql: '', values: [] }
+  }
+
+  // value非函数
   sql += '?'
   values.push({ [key]: value })
   return { sql, values }
@@ -194,12 +241,9 @@ function buildItem(value, key, tableName = '') {
  * //   ?? = ?                           k1, v1,
  * //   and ?? in (?)                    k2, [v2, v3],
  * //   and (?? < ? or ?? > ?)           k3, v4, k3, v5,
- * //   and (?? = ? or ?? = ?)           k4, v6, k5, v7,
  * //   and ?? > ? and ?? < ?            k6, v8, k6, v9,
  * //   and ?? in (?)                    k7, v10,
  * //   and ?? is not ?                  k8, v11,
- * //   and ((?? = ? and ?? = ?)         k9, v12, k10, v13
- * //     or (?? = ? and ?? = ?))        k11, v14, k12, v15
  * // '                                ]
  * obj = {
  *   k1: v1,                           // value是简单类型
@@ -208,10 +252,6 @@ function buildItem(value, key, tableName = '') {
  *     { operator: '<', value: v4 },   //   且内部是带operator，value的对象
  *     { operator: '>', value: v5 },
  *   ],
- *   '()': {                           // key是特殊值, value是object
- *     k4: v6,                         //   且object含多个key value
- *     k5: v7,
- *   },
  *   k6: {                             // value是object
  *     '>': v8,                        //   且内部key是operator，value是简单类型
  *     '<': v9                         //   operator可用 >, <, =, >=, <=,
@@ -224,13 +264,9 @@ function buildItem(value, key, tableName = '') {
  *     operator: 'is not',
  *     value: v11,
  *   },
- *   {}: [                             // key是特殊值，value是array
- *     {k9: v12, k10: v13},            //   且内部是object，含1个或多个key value
- *     {k11: v14, k12: v15},
- *   ]
  * }
  */
-function buildObject(obj, tableName = '') { // {k:v,k:v,k:v} 使用 and 连接
+function buildObject(obj, tableName) { // {k:v,k:v,k:v} 使用 and 连接
   const values = []
   const sqlArr = []
   _.forEach(obj, (value, key) => {
@@ -259,7 +295,6 @@ function buildObject(obj, tableName = '') { // {k:v,k:v,k:v} 使用 and 连接
  * //     ?? = ?                            k1, v1,
  * //     and ?? in (?)                     k2, [v2, v3],
  * //     and (?? < ? or ?? > ?)            k3, v4, k3, v5,
- * //     and (?? = ? or ?? = ?)            k4, v6, k5, v7,
  * //     and ?? > ? and ?? < ?             k6, v8, k6, v9,
  * //     and ?? in (?)                     k7, v10,
  * //     and ?? is not ?                   k8, v11,
@@ -276,9 +311,6 @@ function buildObject(obj, tableName = '') { // {k:v,k:v,k:v} 使用 and 连接
  *       { operator: '<', value: v4 },   //   且内部是带operator，value的对象
  *       { operator: '>', value: v5 },
  *     ],
- *     '()': [                           // key是特殊值, value是array
- *       { k4: v6, k5: v7}               //   且内部是object，含多个key value
- *     ],
  *     k6: {                             // value是object
  *       '>': v8,                        //   且内部key是operator，value是简单类型
  *       '<': v9                         //   operator可用 >, <, =, >=, <=,
@@ -294,7 +326,7 @@ function buildObject(obj, tableName = '') { // {k:v,k:v,k:v} 使用 and 连接
  *   },
  * }
  */
-function buildArray(arr, tableName = '') { // [{k:v},{k:v},{k:v}]使用or连接
+function buildArray(arr, tableName) { // [{k:v},{k:v},{k:v}]使用or连接
   const values = []
   const sqlArr = []
   _.forEach(arr, item => {

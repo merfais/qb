@@ -49,15 +49,6 @@ describe('join', () => {
     expect(mysql.format(...query)).toBe(' inner join `t2` on `t2`.`id` = `t1`.`t2_id`')
   })
 
-  it('join(fn: (queryBuilder) => { sql: string, values: Array } | queryBuilder | void)', () => {
-    query = qb.clear().join(() => ({
-      sql: ' from ?? ?? left join ?? ?? on ??.?? = ??.??',
-      values: ['table1', 't1', 'table2', 't2', 't1', 'f1', 't2', 'f2']
-    })).toQuery();
-    sql = ' from `table1` `t1` left join `table2` `t2` on `t1`.`f1` = `t2`.`f2`'
-    expect(mysql.format(...query)).toBe(sql)
-  })
-
   it('from(table: string).join(target:string, mapping:{ [key:string]:string } }, prefix: string)', () => {
     query = qb.clear().from('t1').join('t2', { id: 't2_id' }).toQuery();
     expect(mysql.format(...query)).toBe(' from `t1` join `t2` on `t2`.`id` = `t1`.`t2_id`')
