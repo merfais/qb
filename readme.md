@@ -14,13 +14,13 @@ npm i -S mysql-query-builder
 + [join](#join)
 + [where](#where)
 + [order](#order)
-+ [limit offset page](#limit)
-+ [group by](#group)
++ [limit offset page](#limit-offset-page)
++ [group by](#group-by)
 + [insert](#insert)
 + [update](#update)
 + [delete](#delete)
-+ [sub padEnd](#sub)
-+ [count max min avg sum](#count)
++ [sub padEnd](#sub-padEnd)
++ [count max min avg sum](#count-max-min-avg-sum)
 
 ```JavaScript
 const mysql = require('mysql')
