@@ -269,7 +269,7 @@ class SqlBuilder {
   clear() {
     this.sql = ''
     this.values = []
-    this.fromTable= ''
+    this.fromTable = ''
     return this
   }
 }

@@ -16,7 +16,7 @@ describe('index', () => {
       .select({ t1: { f1: 'f1', f2: 'f2' }, t2: '' })
       .from('t1')
       .innerJoin('t2', { t1_f2: 'f1' })
-      .where({ t1: { id: 1 }, t2: {f1 :{ '>': 1 } } })
+      .where({ t1: { id: 1 }, t2: { f1: { '>': 1 } } })
       .order({ f1: 'desc', f2: '' })
       .limit(10)
       .offset(10)
@@ -43,16 +43,14 @@ describe('index', () => {
       .toQuery();
     sql = "update `t1` set `f1` = 'str1', `f2` = 'str2' where `id` = 1"
     expect(mysql.format(...query)).toBe(sql)
-
   })
 
   it('delete', () => {
     query = qb
       .delete('t1', { id: { '<': 10 } })
       .toQuery();
-    sql = "delete from `t1` where `id` < 10"
+    sql = 'delete from `t1` where `id` < 10'
     expect(mysql.format(...query)).toBe(sql)
-
   })
 
   it('multiple statement', () => {
@@ -72,7 +70,7 @@ describe('index', () => {
       .from('t1')
       .where({ a: 'str' })
       .page(10, 2)
-      .select((builder) => { builder.count('count')})
+      .select((builder) => { builder.count('count') })
       .from('t1')
       .where({ a: 'str' })
       .toQuery();

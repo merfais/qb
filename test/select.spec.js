@@ -4,6 +4,8 @@ const Builder = require('..')
 describe('select', () => {
   let qb
   let query
+  let sql
+  let des
 
   beforeEach(() => {
     qb = new Builder()
@@ -52,7 +54,7 @@ describe('select', () => {
 
     query = qb.clear().select(() => ({
       sql: 'count(*) as ??',
-      values: ['count']
+      values: ['count'],
     })).toQuery();
     expect(mysql.format(...query)).toBe('select count(*) as `count`')
 
@@ -101,7 +103,7 @@ describe('select', () => {
 
     query = qb.clear().select(['a', () => ({
       sql: 'max(??)',
-      values: ['b']
+      values: ['b'],
     })]).toQuery();
     expect(mysql.format(...query)).toBe('select `a`, max(`b`)')
 
@@ -143,22 +145,22 @@ describe('select', () => {
       a: 'ra',
       b: () => ({
         sql: 'max(??)',
-        values: ['b']
+        values: ['b'],
       }),
     }).toQuery();
     expect(mysql.format(...query)).toBe('select `a` as `ra`, max(`b`)')
 
     query = qb.clear().select({
       a: 'ra',
-      b: (builder) => { builder.max('b', 'maxb') }
+      b: (builder) => { builder.max('b', 'maxb') },
     }).toQuery();
     expect(mysql.format(...query)).toBe('select `a` as `ra`, max(`b`) as `maxb`')
 
     query = qb.clear().select({
       a: 'ra',
-      f: function (builder) {
+      f() {
         this.max('b', 'maxb')
-      }
+      },
     }).toQuery();
     expect(mysql.format(...query)).toBe('select `a` as `ra`, max(`b`) as `maxb`')
   })
@@ -180,7 +182,10 @@ describe('select', () => {
     expect(mysql.format(...query)).toBe('select `a`.`b`, `a`.`d`')
   })
 
-  it('select(fields: { [tableName:string]: <string|boolean|number|<string|boolean|number>[]>[] })', () => {
+  des = 'select(fields: { '
+    + '[tableName:string]: <string|boolean|number|<string|boolean|number>[]>[]'
+    + ' })'
+  it(des, () => {
     query = qb.clear().select({ t: [] }).toQuery();
     expect(mysql.format(...query)).toBe('select `t`.*')
 
@@ -196,7 +201,7 @@ describe('select', () => {
     query = qb.clear().select({ t1: [['b', 'c'], 'd'], t2: ['a'] }).toQuery();
     expect(mysql.format(...query)).toBe('select `t1`.`b` as `c`, `t1`.`d`, `t2`.`a`')
 
-    query = qb.clear().select({ t: [[1, true], 'b'], }).toQuery();
+    query = qb.clear().select({ t: [[1, true], 'b'] }).toQuery();
     expect(mysql.format(...query)).toBe('select `t`.`b`')
 
     query = qb.clear().select({ t1: [[1, 'd'], 'b'], t2: [1] }).toQuery();
@@ -212,10 +217,10 @@ describe('select', () => {
     expect(mysql.format(...query)).toBe('select *')
 
     query = qb.clear().select({
-      t1: { a: 'ra'},
+      t1: { a: 'ra' },
       t2: (builder, tableName) => ({
         sql: 'max(??.??)',
-        values: [tableName, 'b']
+        values: [tableName, 'b'],
       }),
     }).toQuery();
     expect(mysql.format(...query)).toBe('select `t1`.`a` as `ra`, max(`t2`.`b`)')
@@ -226,8 +231,8 @@ describe('select', () => {
         a: 't2a',
         b: (builder, tableName) => {
           builder.max([tableName, 'b'], 'maxb')
-        }
-      }
+        },
+      },
     }).toQuery();
     sql = 'select `t1`.`a` as `t1a`, `t2`.`a` as `t2a`, max(`t2`.`b`) as `maxb`'
     expect(mysql.format(...query)).toBe(sql)
@@ -238,8 +243,8 @@ describe('select', () => {
         ['a', 't2a'],
         function (builder, tableName) {
           this.max([tableName, 'b'], 'maxb')
-        }
-      ]
+        },
+      ],
     }).toQuery();
     sql = 'select `t1`.`a` as `t1a`, `t2`.`a` as `t2a`, max(`t2`.`b`) as `maxb`'
     expect(mysql.format(...query)).toBe(sql)

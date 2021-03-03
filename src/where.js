@@ -44,7 +44,7 @@ function fromArray(value, key, tableName) {
 
   // value是复杂类型, 使用or连接，外层的key忽略
   // { anyKey: [{a: 1}, {b: 2}] } ==> a = 1 or b = 2
-  return buildArray(objArr, tableName)
+  return buildArray(objArr, tableName)  // eslint-disable-line no-use-before-define
 }
 
 /**
@@ -108,14 +108,14 @@ function fromOperatorValue(obj, key, tableName) {
  * key: { '>=': 1, '<=': 2 }  ===> k >= 1 and k <= 2
  */
 function fromMultiOperatorKey(obj, key, tableName) {
-  let sqlArr = []
+  const sqlArr = []
   const values = []
   _.forEach(obj, (value, operator) => {
     let val = value
     let op = operator
     // like 操作符含特殊语法，需要特殊处理
     // %like：左模糊匹配， like%：右模糊匹配
-    if(/like/.test(op)) {
+    if (/like/.test(op)) {
       const [, not, prefix, suffix] = op.match(/(not *)?(%?)like(%?)/)
       op = not ? 'not like' : 'like'
       if (prefix || suffix) {
@@ -186,7 +186,7 @@ function fromObject(value, key, tableName) {
   // 当value对象的key中存在不是operator的key时，
   // 认为是指定tableName的场景, key作为tableName, value作为结构化数据
   // { tableA: { a: 1 } }
-  return buildObject(subObj, key)
+  return buildObject(subObj, key) // eslint-disable-line no-use-before-define
 }
 
 function buildItem(value, key, tableName) {
@@ -330,7 +330,7 @@ function buildArray(arr, tableName) { // [{k:v},{k:v},{k:v}]使用or连接
   const values = []
   const sqlArr = []
   _.forEach(arr, item => {
-    const result= buildObject(item, tableName)
+    const result = buildObject(item, tableName)
     if (result.values.length && result.sql) {
       values.push(...result.values)
       if (/ and /.test(result.sql)) {
@@ -343,9 +343,9 @@ function buildArray(arr, tableName) { // [{k:v},{k:v},{k:v}]使用or连接
   return { values, sql: sqlArr.join(' or ') }
 }
 
-module.exports = function where(where, tableName) {
-  return _.isArray(where)
-    ? buildArray(where, tableName) // [{k:v},{k:v},{k:v}]使用or连接
-    : buildObject(where, tableName) // {k:v,k:v,k:v} 使用 and 连接
+module.exports = function where(condition, tableName) {
+  return _.isArray(condition)
+    ? buildArray(condition, tableName) // [{k:v},{k:v},{k:v}]使用or连接
+    : buildObject(condition, tableName) // {k:v,k:v,k:v} 使用 and 连接
 }
 

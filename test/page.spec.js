@@ -139,7 +139,5 @@ describe('join', () => {
     // illegal input
     query = qb.clear().page([]).toQuery();
     expect(mysql.format(...query)).toBe('')
-
-
   })
 })

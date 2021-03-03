@@ -36,7 +36,6 @@ describe('order', () => {
 
     query = qb.clear().order('a asc b desc').toQuery();
     expect(mysql.format(...query)).toBe(' order by `a` asc')
-
   })
 
   it('order(sort:{ [field:string]: string })', () => {

@@ -41,7 +41,7 @@ module.exports = function insert(tableName, data) {
   // 多个item，使用values插入多行
   const fields = Object.keys(fieldMap)
 
-  const fieldsHolder = _.map(fields, i => '??').join(', ')
+  const fieldsHolder = _.map(fields, () => '??').join(', ')
   sql += `(${fieldsHolder}) values ?`
 
   const valueArr = _.map(data, obj => {

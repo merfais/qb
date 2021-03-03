@@ -45,7 +45,7 @@ describe('join', () => {
     query = qb.clear().join({ target: 't2', source: 't1', mapping: { id: 't2_id' } }).toQuery();
     expect(mysql.format(...query)).toBe(' join `t2` on `t2`.`id` = `t1`.`t2_id`')
 
-    query = qb.clear().join({ target: 't2', source:'t1', mapping: { id: 't2_id' } }, 'inner').toQuery();
+    query = qb.clear().join({ target: 't2', source: 't1', mapping: { id: 't2_id' } }, 'inner').toQuery();
     expect(mysql.format(...query)).toBe(' inner join `t2` on `t2`.`id` = `t1`.`t2_id`')
   })
 
@@ -58,7 +58,8 @@ describe('join', () => {
 
     query = qb.clear().from('t1')
       .join({ target: 't2', mapping: { id: 't2_id' } }, 'inner')
-      .join('t3', { id: 't3_id' }, 't2', 'inner').toQuery();
+      .join('t3', { id: 't3_id' }, 't2', 'inner')
+      .toQuery();
     const str = ' from `t1` inner join `t2` on `t2`.`id` = `t1`.`t2_id` '
       + 'inner join `t3` on `t3`.`id` = `t2`.`t3_id`'
     expect(mysql.format(...query)).toBe(str)

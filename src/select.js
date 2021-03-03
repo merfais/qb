@@ -55,7 +55,6 @@ function fromArray(fields, table) {
         sql.push('?? as ??')
       }
       values.push(field[0], field[1].trim())
-      return
     }
   })
   return { sql, values }

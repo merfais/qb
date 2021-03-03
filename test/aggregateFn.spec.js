@@ -174,6 +174,5 @@ describe('aggregate function', () => {
     query = qb.clear().sum({}).toQuery();
     expect(mysql.format(...query)).toBe('')
   })
-
 })
 

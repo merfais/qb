@@ -47,22 +47,22 @@ describe('insert', () => {
     query = qb.clear().insert('t', [{}]).toQuery();
     expect(mysql.format(...query)).toBe('')
 
-    query = qb.clear().insert('t', [{ a: 1, b: '2'}]).toQuery();
+    query = qb.clear().insert('t', [{ a: 1, b: '2' }]).toQuery();
     expect(mysql.format(...query)).toBe("insert into `t` set `a` = 1, `b` = '2'")
 
     query = qb.clear().insert('t', [{ a: true, b: null }, {}]).toQuery();
-    expect(mysql.format(...query)).toBe("insert into `t` set `a` = true, `b` = NULL")
+    expect(mysql.format(...query)).toBe('insert into `t` set `a` = true, `b` = NULL')
 
-    query = qb.clear().insert('t', [{ a: 1, b: 'b' }, {a: 2, b: 'b' }]).toQuery();
+    query = qb.clear().insert('t', [{ a: 1, b: 'b' }, { a: 2, b: 'b' }]).toQuery();
     expect(mysql.format(...query)).toBe("insert into `t` (`a`, `b`) values (1, 'b'), (2, 'b')")
 
     query = qb.clear().insert('t', [
       { b: 2, c: 3 },
       { a: 2, b: 3 },
-      { b: 3, c: 4, d: 5 }
+      { b: 3, c: 4, d: 5 },
     ]).toQuery();
-    sql = "insert into `t` (`b`, `c`, `a`, `d`) values "
-      + "(2, 3, NULL, NULL), (3, NULL, 2, NULL), (3, 4, NULL, 5)"
+    sql = 'insert into `t` (`b`, `c`, `a`, `d`) values '
+      + '(2, 3, NULL, NULL), (3, NULL, 2, NULL), (3, 4, NULL, 5)'
     expect(mysql.format(...query)).toBe(sql)
 
     // illegal input

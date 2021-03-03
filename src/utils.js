@@ -122,7 +122,7 @@ function forEach(src, func) {
   let i = 0
   // istanbul ignore else
   if (isArray(src)) {
-    while(i < src.length) {
+    while (i < src.length) {
       const rst = func(src[i], i, src)
       // istanbul ignore if
       if (rst === false) {
@@ -132,7 +132,7 @@ function forEach(src, func) {
     }
   } else if (isObject(src)) {
     const keys = Object.keys(src)
-    while(i < keys.length) {
+    while (i < keys.length) {
       const key = keys[i]
       const rst = func(src[key], key, src)
       // istanbul ignore if

@@ -12,14 +12,12 @@ module.exports = function fn(fn, field, as) {
     field = field.trim()
     if (field === '*') {
       sql += `${fn}(*)`
+    } else if (tableName) {
+      sql += `${fn}(??.??)`
+      values.push(tableName, field)
     } else {
-      if (tableName) {
-        sql += `${fn}(??.??)`
-        values.push(tableName, field)
-      } else {
-        sql += `${fn}(??)`
-        values.push(field)
-      }
+      sql += `${fn}(??)`
+      values.push(field)
     }
     if (_.isString(as) && as.trim()) {
       sql += ' as ??'

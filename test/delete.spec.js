@@ -4,6 +4,7 @@ const Builder = require('..')
 describe('delete', () => {
   let qb
   let query
+  let sql
 
   beforeEach(() => {
     qb = new Builder()
@@ -19,11 +20,11 @@ describe('delete', () => {
     query = qb.clear().delete('t').toQuery();
     expect(mysql.format(...query)).toBe('delete from `t`')
 
-    query = qb.clear().delete('t', {id: 1}).toQuery();
+    query = qb.clear().delete('t', { id: 1 }).toQuery();
     expect(mysql.format(...query)).toBe('delete from `t` where `id` = 1')
 
-    query = qb.clear().delete('t', [{id: 1}, {f: 2}]).toQuery();
-    sql = "delete from `t` where `id` = 1 or `f` = 2"
+    query = qb.clear().delete('t', [{ id: 1 }, { f: 2 }]).toQuery();
+    sql = 'delete from `t` where `id` = 1 or `f` = 2'
     expect(mysql.format(...query)).toBe(sql)
 
     // illegal input

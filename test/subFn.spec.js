@@ -25,7 +25,7 @@ describe('sub', () => {
       .select('f1')
       .from('t1')
       .padEnd(' where ?? in (', ['f2'])
-      .sub(function() {
+      .sub(function () {
         this.select('f3')
           .padEnd(' as ?? from ??)')
           .padEnd(['r3', 't2'])
@@ -40,7 +40,7 @@ describe('sub', () => {
       .padEnd(' where ?? in (', ['f2'])
       .sub(() => ({
         sql: 'select ?? from ??',
-        values: ['f3', 't2']
+        values: ['f3', 't2'],
       }))
       .padEnd(')')
       .toQuery()
@@ -53,12 +53,11 @@ describe('sub', () => {
       .padEnd()
       .sub(() => ({
         str: 'select ?? from ??',
-        valueArr: ['f3', 't2']
+        valueArr: ['f3', 't2'],
       }))
       .padEnd()
       .toQuery()
     sql = 'select `f1` from `t1`'
     expect(mysql.format(...query)).toBe(sql)
-
   })
 })
