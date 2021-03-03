@@ -81,3 +81,4 @@ describe('order', () => {
     expect(mysql.format(...query)).toBe('')
   })
 })
+

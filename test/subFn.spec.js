@@ -61,3 +61,4 @@ describe('sub', () => {
     expect(mysql.format(...query)).toBe(sql)
   })
 })
+

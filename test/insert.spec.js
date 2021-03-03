@@ -78,3 +78,4 @@ describe('insert', () => {
     expect(mysql.format(...query)).toBe('')
   })
 })
+

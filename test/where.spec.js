@@ -460,3 +460,4 @@ describe('where', () => {
     expect(mysql.format(...query)).toBe(' where `a` = 1 or `b` = 2')
   })
 })
+

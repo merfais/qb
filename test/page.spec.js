@@ -141,3 +141,4 @@ describe('join', () => {
     expect(mysql.format(...query)).toBe('')
   })
 })
+
