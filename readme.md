@@ -1,11 +1,11 @@
 # mysql-query-builder
 
-mysql query build tools
+**mysql query build tools**
 
 ## install
 
 ```Shell
-npm i -S mysql-query-builder
+npm i -S qb-mysql
 ```
 ## usage
 
