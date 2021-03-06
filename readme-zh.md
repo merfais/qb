@@ -48,6 +48,19 @@ connection.query(...qb.toQuery())
 
 # API
 
++ [select](#select)
++ [count max min avg sum](#count-max-min-avg-sum)
++ [from](#from)
++ [join](#join)
++ [where](#where)
++ [order](#order-by)
++ [page limit offset](#page-limit-offset)
++ [group by](#group-by)
++ [insert](#insert)
++ [update](#update)
++ [delete](#delete)
++ [sub padEnd](#sub-padEnd)
+
 ## select
 
 **参数类型**
