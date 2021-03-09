@@ -549,6 +549,38 @@ qb.select('f1')
 // => 'select `f1` from `t1` where `f2` in (select `f3` from `t2`)
 ```
 
+## clear
+
+`qb-mysql` 支持了多query查询，当使用多个语句（即多次调用select, insert, update, delete）时，会自动在各条语句间插入分号（;）
+
+`clear`用于清空queryBuilder中已经构建的query语句，当需要新建一条query时，可以使用 `const queryBuilder = new QueryBuilder()`的方式，也可以在已经实例化的`queryBuilder`对象上调用`queryBuilder.clear()`
+
+**参数类型**
++ 无
+
+**函数**
+| 列表                    | 说明                       |
+|-------------------------|---------------------------|
+| clear() => qb           | 一般用于同一作用域中多次调用函数生成query时，清除前面生成的内容 |
+
+
+**例子**
+ ```javascript
+ // 1. 创建实例
+  const qb = new QueryBuilder()
+  qb.select('a').from('t').select(qb => qb.count()).form('t')
+  // => select `a` from `t`;select count(*) from `t`
+
+  // 2. 如果调用clear， 在同一个作用域中继续执行以下语句
+  qb.clear().select(qb => qb.count()).form('t')
+  // => select count(*) from `t`
+
+  // 2. 如果不调用clear，在同一个作用域中继续执行以下语句
+  qb.select(qb => qb.count()).form('t')
+  // => select `a` from `t`;select count(*) from `t`;select count(*) from `t`
+  ```
+
+
 # 注意事项
 
 + 调用各个子函数时，调用顺序要严格按照 sql 语句的语法，为了最小化代码体积，`qb-mysql`并未做语法分析和检测，因此及时语句有错误也会生成query对象。
@@ -556,7 +588,7 @@ qb.select('f1')
   + 比如 qb.from('t').select('a') 会生成 <code>from \`t\`select \`a`</code>
   + 尤其要特别注意 `order`, `limit`, `offset` 的顺序，写反了会导致sql查询异常
 
-+ `qb-mysql`支持了多query查询，当使用多个语句（即多次调用`select`, `insert`, `update`, `delete`）时，会自动在各个语句间插入分号（`;`），但要注意这不是事务安全的，例如
++ `qb-mysql`支持了多query查询，当使用多个语句时，会自动在各个语句间插入分号（`;`），但要注意这不是事务安全的，例如
 
   ```javascript
   // 同时查询表长度
