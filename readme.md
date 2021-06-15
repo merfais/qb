@@ -421,9 +421,12 @@ qb.page(10, 2) // => limit 10 offset 10
 ## group by
 
 **参数类型**
+
 + type name = string
 + type table = { [key: name]: name | name[] }
+
 **函数**
+
 | 列表                                            | 说明                       |
 |-------------------------------------------------|---------------------------|
 | group(field: name, tableName?: name) => qb      | 对单个字段聚合              |
